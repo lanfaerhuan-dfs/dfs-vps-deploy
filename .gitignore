@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+*.dfsbackup
+*.pem
+*.key
+*.log
+state.json
+dns-journal.json
+subscription.yaml
+.env*
