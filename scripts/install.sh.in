@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+umask 077
+
+work_dir="$(mktemp -d)"
+trap 'rm -rf -- "$work_dir"' EXIT
+cd -- "$work_dir"
+
+curl -q --proto '=https' --proto-redir '=https' --connect-timeout 10 \
+    --max-time 120 --retry 2 -fsSL '@ARCHIVE_URL@' -o source.tar.gz
+printf '%s  source.tar.gz\n' '@ARCHIVE_SHA256@' | sha256sum -c -
+tar -xzf source.tar.gz
+bash dfs-vps-deploy/bootstrap.sh "$@"

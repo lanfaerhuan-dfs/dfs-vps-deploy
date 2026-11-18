@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import unittest
 from unittest.mock import call, patch
+from urllib.parse import parse_qs, urlsplit
 
 from dfs import cli, dns, linux
 from dfs.model import (DEFAULT_FILENAME, MAGIC, DeployError, Node, domain_name, make_backup,
@@ -51,6 +52,23 @@ class DirectoryTest(unittest.TestCase):
 
 
 class IdentityTests(DirectoryTest):
+    def test_vless_links_export_only_client_parameters(self):
+        node = cli.replace(self.node, reality_port=9443, sni="example.com")
+        for address in (None, ADDRESS):
+            uri = node.vless_uri(address)
+            parsed = urlsplit(uri)
+            self.assertEqual(parsed.scheme, "vless")
+            self.assertEqual(parsed.hostname, address or DOMAIN)
+            self.assertEqual(parsed.port, node.reality_port)
+            self.assertEqual(parsed.username, node.uuid)
+            self.assertEqual(parse_qs(parsed.query), {
+                "type": ["tcp"], "encryption": ["none"], "security": ["reality"],
+                "flow": ["xtls-rprx-vision"], "sni": [node.sni], "fp": ["chrome"],
+                "pbk": [node.public_key], "sid": [node.short_id],
+            })
+            self.assertNotIn(node.private_key, uri)
+            self.assertNotIn(node.route, uri)
+
     def test_new_distinct_secure_subscription_and_full_rules(self):
         other = Node.generate(DOMAIN)
         for field in ("uuid", "private_key", "public_key", "short_id", "route"):
@@ -288,11 +306,27 @@ class WorkflowTests(DirectoryTest):
         self.assertEqual(started.phase, "staged")
         self.assertEqual(self.store.load().node, self.node)
 
-    def test_no_dns_does_not_create_dns_journal(self):
-        with patch.object(self.store, "transaction") as transaction:
+    def test_no_dns_exports_ip_link_without_creating_dns_journal(self):
+        with (
+            patch.object(self.store, "transaction") as transaction,
+            contextlib.redirect_stdout(io.StringIO()) as console,
+        ):
             cli.finish(self.store, self.state, HOST, no_dns=True)
         transaction.assert_not_called()
         self.assertFalse(self.store.journal.exists())
+        self.assertIn(self.node.vless_uri(ADDRESS), console.getvalue())
+
+    def test_show_vless_uses_ip_when_staged_and_domain_when_ready(self):
+        args = cli.arguments(["--show-vless"])
+        with patch.object(linux, "public_ipv4", return_value=ADDRESS) as public_ipv4:
+            with contextlib.redirect_stdout(io.StringIO()) as console:
+                cli.dispatch(self.store, args)
+            self.assertEqual(console.getvalue().strip(), self.node.vless_uri(ADDRESS))
+            self.store.save(cli.replace(self.state, phase="ready"))
+            with contextlib.redirect_stdout(io.StringIO()) as console:
+                cli.dispatch(self.store, args)
+            self.assertEqual(console.getvalue().strip(), self.node.vless_uri())
+        public_ipv4.assert_called_once_with()
 
     def test_repeated_install_enters_maintenance_with_same_identity(self):
         with patch.object(cli, "maintain", return_value="show-subscription") as menu, patch.object(cli, "prepare") as fresh:

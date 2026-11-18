@@ -251,6 +251,7 @@ def print_success(state, host, backup):
     print(f"Caddy         RUNNING\nREALITY TCP   {node.reality_port} OK\nHTTPS TCP     {node.https_port} OK")
     print("DNS           OK\nCertificate   VALID\nMihomo YAML   VALID")
     print(f"\nDomain        {node.domain}\nServer IPv4   {host.address}\n\nSubscription\n{node.url}")
+    print(f"\nVLESS 节点（Shadowrocket）\n{node.vless_uri()}")
     print(f"\nBackup        {backup}\nStatus        DEPLOY SUCCESS")
     print("\n请立即从 VPS 下载加密备份，并在安全位置异地保存。迁移后请从外网刷新和验证订阅。")
 
@@ -259,7 +260,9 @@ def finish(store, state, host, no_dns):
     node = state.node
     if no_dns:
         note("STAGED：本地预检查通过，DNS 与 ACME 留待 resume。")
-        print(f"加密迁移备份 {store.backup}\n继续部署请运行 dfs-vps-deploy resume。")
+        print(f"\nVLESS 节点（公网 IPv4，供 Shadowrocket 导入）\n{node.vless_uri(host.address)}")
+        print(f"\n用该节点登录 DuckDNS，准备 {node.domain} 的 Token，再运行 dfs-vps-deploy resume。")
+        print(f"加密迁移备份 {store.backup}")
         return
     linux.print_host(host, node)
     linux.service_health(node, live=False)
@@ -418,16 +421,24 @@ def local_operation(store, state, action, version=None):
     note("维护完成，服务及订阅检查通过。")
 
 
+def print_vless(state):
+    if state.phase == "provisioning":
+        raise DeployError("节点尚未就绪，请先运行 resume --no-dns。")
+    address = linux.public_ipv4() if state.phase == "staged" else None
+    print(state.node.vless_uri(address))
+
+
 def maintain():
     print(BANNER)
     print("\n维护节点\n1. 健康检查\n2. 显示订阅 URL\n3. 生成加密备份\n4. 安全升级 Xray\n"
-          "5. 备份并修复配置\n6. 重启并检查服务\n7. 继续部署\n8. 回滚 DNS\n9. 恢复本机快照")
+          "5. 备份并修复配置\n6. 重启并检查服务\n7. 继续部署\n8. 回滚 DNS\n9. 恢复本机快照\n"
+          "10. 显示 VLESS 链接")
     return {"1": "check", "2": "show-subscription", "3": "backup", "4": "upgrade", "5": "repair",
-            "6": "restart", "7": "resume", "8": "rollback", "9": "rollback-local"}.get(
+            "6": "restart", "7": "resume", "8": "rollback", "9": "rollback-local", "10": "show-vless"}.get(
                 input("请输入选项：").strip())
 
 
-ACTIONS = ("new", "migrate", "restore", "maintain", "check", "show-subscription", "backup",
+ACTIONS = ("new", "migrate", "restore", "maintain", "check", "show-subscription", "show-vless", "backup",
            "rollback", "rollback-local", "resume", "upgrade", "repair", "restart")
 
 
@@ -435,7 +446,7 @@ def arguments(argv):
     parser = argparse.ArgumentParser(prog="dfs-vps-deploy", description="Debian VLESS + REALITY 自动部署")
     parser.add_argument("action", choices=ACTIONS, nargs="?")
     aliases = parser.add_mutually_exclusive_group()
-    for name in ("check", "show-subscription", "backup", "rollback"):
+    for name in ("check", "show-subscription", "show-vless", "backup", "rollback"):
         aliases.add_argument("--" + name, dest="alias", action="store_const", const=name)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--no-dns", action="store_true")
@@ -462,12 +473,14 @@ def dispatch(store, args):
             action = "resume"
         if action in (None, "maintain"):
             action = maintain()
-        if store.pending.exists() and action not in ("rollback-local", "check", "show-subscription"):
+        if store.pending.exists() and action not in ("rollback-local", "check", "show-subscription", "show-vless"):
             raise DeployError("检测到未完成的本机维护，请先运行 rollback-local。")
         if action in ("new", "migrate", "restore"):
             raise DeployError("已有部署状态，请使用 maintain 或 resume。")
         if action == "show-subscription":
             print(state.node.url)
+        elif action == "show-vless":
+            print_vless(state)
         elif action == "check":
             check(store, state)
         elif action == "resume":
@@ -525,12 +538,14 @@ def main(argv=None):
                                  managed=state is not None, read_only=True)
             linux.print_host(host)
             print("DRY-RUN：只读环境检查通过。")
-        elif args.action in ("check", "show-subscription"):
+        elif args.action in ("check", "show-subscription", "show-vless"):
             state = store.load()
             if not state:
                 raise DeployError("没有由本工具管理的部署。")
             if args.action == "check":
                 check(store, state)
+            elif args.action == "show-vless":
+                print_vless(state)
             else:
                 print(state.node.url)
         else:

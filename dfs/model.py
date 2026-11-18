@@ -9,10 +9,10 @@ import uuid as uuid_module
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from string import Template
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 DEFAULT_XRAY = "26.2.6"
 DEFAULT_FILENAME = "dfs-vless-reality-clash.yaml"
 NODE_NAME = "DFS-VLESS-REALITY-VISION"
@@ -109,6 +109,21 @@ class Node:
     @property
     def url(self):
         return f"https://{self.domain}:{self.https_port}{self.route}"
+
+    def vless_uri(self, public_ipv4=None):
+        host = public_ipv4 or self.domain
+        name = f"{NODE_NAME}-IP" if public_ipv4 else NODE_NAME
+        params = urlencode({
+            "type": "tcp",
+            "encryption": "none",
+            "security": "reality",
+            "flow": "xtls-rprx-vision",
+            "sni": self.sni,
+            "fp": "chrome",
+            "pbk": self.public_key,
+            "sid": self.short_id,
+        })
+        return f"vless://{self.uuid}@{host}:{self.reality_port}?{params}#{name}"
 
     @classmethod
     def generate(cls, domain, version=DEFAULT_XRAY, legacy=None):

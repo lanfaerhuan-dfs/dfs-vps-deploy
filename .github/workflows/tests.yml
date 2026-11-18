@@ -15,4 +15,4 @@ jobs:
       - name: Run offline tests and Caddy integration
         run: docker run --rm --network none -v "$PWD:/repo:ro" dfs-debian-tests
       - name: Validate shell entry points
-        run: bash -n bootstrap.sh && bash -n scripts/package.sh
+        run: bash -n bootstrap.sh && bash -n scripts/package.sh && bash -n scripts/install.sh.in
