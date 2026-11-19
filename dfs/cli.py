@@ -393,6 +393,9 @@ def local_operation(store, state, action, version=None):
             raise DeployError("升级版本必须高于当前版本。")
         linux.service_health(node, live=True)
         password = password_new()
+    elif action == "repair":
+        # Install the reader for the new subscription before changing the live file.
+        linux.install_tool()
     store.snapshot()
     try:
         if action == "repair":

@@ -13,6 +13,8 @@ import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import yaml
+
 from dfs import linux
 from dfs.model import DeployError, Node, render
 
@@ -174,3 +176,31 @@ class BinaryTests(unittest.TestCase):
             path = parent / "config.yaml"
             path.write_bytes(render(Node.generate(DOMAIN), "mihomo-v1.yaml.tpl"))
             run([str(MIHOMO), "-t", "-d", directory, "-f", str(path)])
+
+    @unittest.skipUnless(MIHOMO, "set TEST_MIHOMO to the Mihomo binary")
+    def test_mihomo_loads_bare_subnets_into_both_rule_sets(self):
+        template = yaml.safe_load(render(Node.generate(DOMAIN), "mihomo-v1.yaml.tpl"))
+        names = ("ChinaIp", "ChinaCompanyIp")
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            control = port()
+            sources = {}
+            for name in names:
+                provider = template["rule-providers"][name]
+                path = Path(provider["path"])
+                (parent / path).parent.mkdir(parents=True, exist_ok=True)
+                (parent / path).write_text("payload:\n  - '192.0.2.0/24'\n  - '203.0.113.0/24'\n")
+                sources[name] = {"type": "file", "path": str(path), "format": provider["format"],
+                                 "behavior": provider["behavior"]}
+            config = parent / "config.yaml"
+            config.write_text(yaml.safe_dump({
+                "external-controller": f"127.0.0.1:{control}",
+                "rule-providers": sources,
+                "rules": [f"RULE-SET,{name},DIRECT" for name in names] + ["MATCH,DIRECT"],
+            }))
+            with server([str(MIHOMO), "-d", directory, "-f", str(config)], control, parent):
+                url = f"http://127.0.0.1:{control}/providers/rules"
+                response = run(["curl", "-q", "--noproxy", "*", "--max-time", "5", "-fsS", url])
+                loaded = json.loads(response)["providers"]
+                self.assertEqual({name: loaded[name]["ruleCount"] for name in names},
+                                 {"ChinaIp": 2, "ChinaCompanyIp": 2})

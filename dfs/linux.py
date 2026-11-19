@@ -183,9 +183,27 @@ def install_packages(*, python_only=False, refresh=True):
     run(base + ["-y", "install", "--no-install-recommends", *packages], "安装 Debian 依赖", timeout=420)
 
 
+def tool_launcher(version):
+    return ("#!/bin/sh\nexport PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n"
+            f'exec /usr/bin/python3 -EsB "{TOOL / version}/dfs_vps_deploy.py" "$@"\n').encode()
+
+
 def install_tool():
     root = CONFIG.parent
     release = TOOL / VERSION
+    launcher = tool_launcher(VERSION)
+    current = None
+    if os.path.lexists(LAUNCHER):
+        if LAUNCHER.is_symlink() or not LAUNCHER.is_file() or LAUNCHER.stat().st_size > 4096:
+            raise DeployError("维护命令不是本工具生成的入口，请检查其路径。")
+        current = LAUNCHER.read_bytes()
+        match = re.search(rb'/(\d+\.\d+\.\d+)/dfs_vps_deploy\.py"', current)
+        if not match or current != tool_launcher(match[1].decode("ascii")):
+            raise DeployError("维护命令不是本工具生成的入口，请检查其内容。")
+        previous = tuple(map(int, match[1].split(b".")))
+        if previous > tuple(map(int, VERSION.split("."))):
+            raise DeployError("本机维护工具版本更高，请使用已安装的 dfs-vps-deploy。")
+
     if root != release and not release.exists():
         TOOL.mkdir(mode=0o755, parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix=".dfs-install-", dir=TOOL) as tmp:
@@ -196,10 +214,8 @@ def install_tool():
             shutil.copyfile(root / "dfs_vps_deploy.py", staged / "dfs_vps_deploy.py")
             staged.rename(release)
             sync_directory(TOOL)
-    if not LAUNCHER.exists():
-        launcher = ("#!/bin/sh\nexport PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n"
-                    f'exec /usr/bin/python3 -EsB "{release}/dfs_vps_deploy.py" "$@"\n')
-        atomic_file(LAUNCHER, launcher.encode(), 0o755)
+    if current != launcher:
+        atomic_file(LAUNCHER, launcher, 0o755)
 
 
 def hard_directory(path, owner, group, mode):
@@ -441,7 +457,7 @@ def service_health(node, *, live, verify_caddy_tls=True):
     service_validation(XRAY_CONF, CADDY_CONF)
     if XRAY_CONF.read_bytes() != render(node, "xray.json.tpl") or CADDY_CONF.read_bytes() != caddy_bytes(node, live):
         raise DeployError("服务配置与当前部署状态不符，可使用维护修复。")
-    validate_mihomo(SUBSCRIPTION.read_bytes(), node)
+    validate_mihomo(SUBSCRIPTION.read_bytes(), node, allow_legacy=True)
     verify_listener(node.reality_port, "xray.service")
     verify_listener(80, "caddy.service")
     if live:

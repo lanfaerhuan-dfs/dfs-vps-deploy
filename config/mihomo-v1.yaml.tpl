@@ -1,6 +1,6 @@
 # 电风扇-vless-reality-clash
 # Mihomo / Clash Verge Rev
-# ACL4SSR 规则每天自动拉取更新
+# ACL4SSR 规则每天通过自建节点更新
 
 mixed-port: 7890
 allow-lan: false
@@ -203,6 +203,7 @@ proxy-groups:
 rule-providers:
   LocalAreaNetwork:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/LocalAreaNetwork.yaml"
@@ -211,6 +212,7 @@ rule-providers:
 
   UnBan:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/UnBan.yaml"
@@ -219,6 +221,7 @@ rule-providers:
 
   BanAD:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/BanAD.yaml"
@@ -227,6 +230,7 @@ rule-providers:
 
   BanProgramAD:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/BanProgramAD.yaml"
@@ -235,6 +239,7 @@ rule-providers:
 
   ChinaDomain:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ChinaDomain.yaml"
@@ -243,7 +248,8 @@ rule-providers:
 
   ChinaCompanyIp:
     type: http
-    behavior: classical
+    proxy: DFS-VLESS-REALITY-VISION
+    behavior: ipcidr
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ChinaCompanyIp.yaml"
     path: ./rule_provider/ChinaCompanyIp.yaml
@@ -251,7 +257,8 @@ rule-providers:
 
   ChinaIp:
     type: http
-    behavior: classical
+    proxy: DFS-VLESS-REALITY-VISION
+    behavior: ipcidr
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ChinaIp.yaml"
     path: ./rule_provider/ChinaIp.yaml
@@ -259,6 +266,7 @@ rule-providers:
 
   ChinaIpV6:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ChinaIpV6.yaml"
@@ -267,6 +275,7 @@ rule-providers:
 
   ChinaMedia:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ChinaMedia.yaml"
@@ -275,6 +284,7 @@ rule-providers:
 
   ProxyMedia:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ProxyMedia.yaml"
@@ -283,6 +293,7 @@ rule-providers:
 
   ProxyGFWlist:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/ProxyGFWlist.yaml"
@@ -291,6 +302,7 @@ rule-providers:
 
   DownloadBase:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Download.yaml"
@@ -299,6 +311,7 @@ rule-providers:
 
   Apple:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Apple.yaml"
@@ -307,6 +320,7 @@ rule-providers:
 
   Microsoft:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Microsoft.yaml"
@@ -315,6 +329,7 @@ rule-providers:
 
   Bing:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Bing.yaml"
@@ -323,6 +338,7 @@ rule-providers:
 
   OneDrive:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/OneDrive.yaml"
@@ -331,6 +347,7 @@ rule-providers:
 
   Telegram:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Telegram.yaml"
@@ -339,6 +356,7 @@ rule-providers:
 
   OpenAi:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/OpenAi.yaml"
@@ -347,6 +365,7 @@ rule-providers:
 
   AI:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/AI.yaml"
@@ -355,6 +374,7 @@ rule-providers:
 
   Claude:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Claude.yaml"
@@ -363,6 +383,7 @@ rule-providers:
 
   Gemini:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Gemini.yaml"
@@ -371,6 +392,7 @@ rule-providers:
 
   Google:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Google.yaml"
@@ -379,6 +401,7 @@ rule-providers:
 
   YouTube:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/YouTube.yaml"
@@ -387,6 +410,7 @@ rule-providers:
 
   Netflix:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Netflix.yaml"
@@ -395,6 +419,7 @@ rule-providers:
 
   Github:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Github.yaml"
@@ -403,6 +428,7 @@ rule-providers:
 
   Steam:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/Steam.yaml"
@@ -411,6 +437,7 @@ rule-providers:
 
   SteamCN:
     type: http
+    proxy: DFS-VLESS-REALITY-VISION
     behavior: classical
     format: yaml
     url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Providers/Ruleset/SteamCN.yaml"
@@ -418,6 +445,9 @@ rule-providers:
     interval: 86400
 
 rules:
+  - DOMAIN,copilot.microsoft.com,AI平台
+  - DOMAIN,www.duckdns.org,节点选择
+
   # 局域网 / 明确直连
   - RULE-SET,LocalAreaNetwork,DIRECT
   - RULE-SET,UnBan,DIRECT

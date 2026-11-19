@@ -8,8 +8,10 @@ import unittest
 from unittest.mock import call, patch
 from urllib.parse import parse_qs, urlsplit
 
+import yaml
+
 from dfs import cli, dns, linux
-from dfs.model import (DEFAULT_FILENAME, MAGIC, DeployError, Node, domain_name, make_backup,
+from dfs.model import (DEFAULT_FILENAME, MAGIC, NODE_NAME, DeployError, Node, domain_name, make_backup,
                        parse_legacy, render, restore_backup, validate_mihomo)
 
 
@@ -133,6 +135,95 @@ class IdentityTests(DirectoryTest):
         for data in broken:
             with self.subTest(), self.assertRaisesRegex(DeployError, "YAML"):
                 validate_mihomo(data, self.node)
+
+    def test_copilot_duckdns_and_rule_download_routes(self):
+        config = yaml.safe_load(render(self.node, "mihomo-v1.yaml.tpl"))
+        rules = config["rules"]
+        copilot = "DOMAIN,copilot.microsoft.com,AI平台"
+        for broader_rule in ("RULE-SET,Bing,Ⓜ️ 微软Bing", "RULE-SET,Microsoft,Ⓜ️ 微软服务", "RULE-SET,AI,AI平台"):
+            self.assertLess(rules.index(copilot), rules.index(broader_rule))
+        duckdns = "DOMAIN,www.duckdns.org,节点选择"
+        self.assertEqual([rule for rule in rules if "duckdns.org" in rule], [duckdns])
+        self.assertLess(rules.index(duckdns), rules.index("RULE-SET,ProxyGFWlist,节点选择"))
+        for name, provider in config["rule-providers"].items():
+            with self.subTest(provider=name):
+                self.assertEqual(provider["proxy"], NODE_NAME)
+
+    def test_only_the_two_bare_subnet_providers_use_ipcidr(self):
+        config = yaml.safe_load(render(self.node, "mihomo-v1.yaml.tpl"))
+        providers = config["rule-providers"]
+        self.assertEqual(len(providers), 27)
+        self.assertEqual(
+            {name: p["behavior"] for name, p in providers.items() if p["behavior"] != "classical"},
+            {"ChinaIp": "ipcidr", "ChinaCompanyIp": "ipcidr"},
+        )
+        for name, wrong in (("ChinaIp", "classical"), ("ChinaCompanyIp", "classical"), ("ChinaIpV6", "ipcidr")):
+            before = providers[name]["behavior"]
+            providers[name]["behavior"] = wrong
+            snapshot = yaml.safe_dump(config).encode()
+            for allow_legacy in (False, True):
+                with self.subTest(provider=name, allow_legacy=allow_legacy), self.assertRaises(DeployError):
+                    validate_mihomo(snapshot, self.node, allow_legacy=allow_legacy)
+            providers[name]["behavior"] = before
+
+    def test_reject_wide_duckdns_late_copilot_and_direct_rule_downloads(self):
+        config = yaml.safe_load(render(self.node, "mihomo-v1.yaml.tpl"))
+        rules = config["rules"]
+        duckdns = rules.index("DOMAIN,www.duckdns.org,节点选择")
+        rules[duckdns] = "DOMAIN-SUFFIX,duckdns.org,节点选择"
+        with self.assertRaises(DeployError):
+            validate_mihomo(yaml.safe_dump(config).encode(), self.node)
+        rules[duckdns] = "DOMAIN,www.duckdns.org,节点选择"
+
+        copilot = "DOMAIN,copilot.microsoft.com,AI平台"
+        original = rules.index(copilot)
+        rules.remove(copilot)
+        rules.insert(rules.index("RULE-SET,Bing,Ⓜ️ 微软Bing") + 1, copilot)
+        with self.assertRaises(DeployError):
+            validate_mihomo(yaml.safe_dump(config).encode(), self.node)
+        rules.remove(copilot)
+        rules.insert(original, copilot)
+
+        provider = config["rule-providers"]["Github"]
+        provider["proxy"] = "DIRECT"
+        with self.assertRaises(DeployError):
+            validate_mihomo(yaml.safe_dump(config).encode(), self.node)
+        del provider["proxy"]
+        with self.assertRaises(DeployError):
+            validate_mihomo(yaml.safe_dump(config).encode(), self.node)
+
+    def test_deployed_legacy_subscription_remains_valid_but_partial_updates_fail(self):
+        config = yaml.safe_load(render(self.node, "mihomo-v1.yaml.tpl"))
+        # Also support the previous template with proxy downloads and all-classical providers.
+        for name in ("ChinaIp", "ChinaCompanyIp"):
+            config["rule-providers"][name]["behavior"] = "classical"
+        previous = yaml.safe_dump(config).encode()
+        validate_mihomo(previous, self.node, allow_legacy=True)
+        with self.assertRaises(DeployError):
+            validate_mihomo(previous, self.node)
+
+        copilot = "DOMAIN,copilot.microsoft.com,AI平台"
+        config["rules"].remove(copilot)
+        config["rules"].remove("DOMAIN,www.duckdns.org,节点选择")
+        for provider in config["rule-providers"].values():
+            del provider["proxy"]
+        legacy = yaml.safe_dump(config).encode()
+        validate_mihomo(legacy, self.node, allow_legacy=True)
+        with self.assertRaises(DeployError):
+            validate_mihomo(legacy, self.node)
+
+        config["rules"].insert(0, copilot)
+        with self.assertRaises(DeployError):
+            validate_mihomo(yaml.safe_dump(config).encode(), self.node, allow_legacy=True)
+        config["rules"].remove(copilot)
+        config["rule-providers"]["Github"]["proxy"] = NODE_NAME
+        with self.assertRaises(DeployError):
+            validate_mihomo(yaml.safe_dump(config).encode(), self.node, allow_legacy=True)
+        del config["rule-providers"]["Github"]["proxy"]
+        for name in ("ChinaIp", "ChinaCompanyIp"):
+            config["rule-providers"][name]["behavior"] = "ipcidr"
+        with self.assertRaises(DeployError):
+            validate_mihomo(yaml.safe_dump(config).encode(), self.node, allow_legacy=True)
 
 
 class DNSTests(DirectoryTest):

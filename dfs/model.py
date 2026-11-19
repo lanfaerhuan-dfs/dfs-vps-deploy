@@ -12,10 +12,12 @@ from string import Template
 from urllib.parse import urlencode, urlsplit
 
 
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 DEFAULT_XRAY = "26.2.6"
 DEFAULT_FILENAME = "dfs-vless-reality-clash.yaml"
 NODE_NAME = "DFS-VLESS-REALITY-VISION"
+PRIORITY_RULES = ["DOMAIN,copilot.microsoft.com,AI平台", "DOMAIN,www.duckdns.org,节点选择"]
+IPCIDR_PROVIDERS = {"ChinaCompanyIp", "ChinaIp"}
 CONFIG = Path(__file__).resolve().parents[1] / "config"
 MAGIC = b"DFS-BACKUP\x01\x00"
 LABEL = r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
@@ -240,7 +242,7 @@ def render(node, name, **extra):
     return template.substitute(asdict(node), **extra).encode()
 
 
-def validate_mihomo(data, node):
+def validate_mihomo(data, node, *, allow_legacy=False):
     import yaml
 
     class StrictLoader(yaml.SafeLoader):
@@ -263,11 +265,20 @@ def validate_mihomo(data, node):
         if proxies != [expected] or node.private_key.encode() in data or config["dns"]["enhanced-mode"] != "fake-ip":
             raise ValueError
         providers = config["rule-providers"]
+        # Subscriptions already deployed by 0.1.0/0.1.1 had neither priority
+        # rules nor a download proxy. Health checks must also accept those snapshots.
+        legacy = allow_legacy and all("proxy" not in provider for provider in providers.values())
+        # Older templates declared all providers classical, including both IPv4 lists.
+        all_classical = allow_legacy and all(provider["behavior"] == "classical" for provider in providers.values())
+        if legacy and not all_classical:
+            raise ValueError
         provider_paths = set()
-        for provider in providers.values():
+        for name, provider in providers.items():
+            behavior = "ipcidr" if name in IPCIDR_PROVIDERS and not all_classical else "classical"
             if (
                 (provider["type"], provider["behavior"], provider["format"], provider["interval"])
-                != ("http", "classical", "yaml", 86400)
+                != ("http", behavior, "yaml", 86400)
+                or (not legacy and provider.get("proxy") != NODE_NAME)
                 or not re.fullmatch(r"\./rule_provider/(?:Ruleset/)?[A-Za-z0-9_-]+\.yaml", provider["path"])
                 or not re.fullmatch(
                     r"https://raw\.githubusercontent\.com/ACL4SSR/ACL4SSR/master/Clash/Providers/"
@@ -294,6 +305,12 @@ def validate_mihomo(data, node):
             visit(group, set())
 
         rules = config["rules"]
+        if not legacy:
+            if rules[:len(PRIORITY_RULES)] != PRIORITY_RULES:
+                raise ValueError
+            if any(rule.rsplit(",", 1)[1] not in groups for rule in PRIORITY_RULES):
+                raise ValueError
+            rules = rules[len(PRIORITY_RULES):]
         ordered_providers = []
         for rule in rules:
             fields = rule.split(",")

@@ -14,7 +14,7 @@
 在 VPS 的 root SSH 会话执行：
 
 ```bash
-curl -fsSLO https://github.com/lanfaerhuan-dfs/dfs-vps-deploy/releases/download/v0.1.1/install.sh && bash install.sh
+curl -fsSLO https://github.com/lanfaerhuan-dfs/dfs-vps-deploy/releases/download/v0.1.2/install.sh && bash install.sh
 ```
 
 `install.sh` 会下载同版本的归档，使用内置 SHA-256 校验后解包，最后打开安装菜单。在整行末尾追加 `--no-dns` 可以先导出公网 IPv4 的 VLESS 节点，追加 `--dry-run` 可以做只读预检查。
@@ -24,7 +24,7 @@ curl -fsSLO https://github.com/lanfaerhuan-dfs/dfs-vps-deploy/releases/download/
 需要用可信渠道提供的摘要核对归档时，从对应的 [GitHub Release](https://github.com/lanfaerhuan-dfs/dfs-vps-deploy/releases) 确认发布信息，并在以下命令中填入归档名称和预先取得的 SHA-256。维护者可以按 [发布步骤](docs/RELEASE.md) 生成归档。
 
 ```bash
-REPO='lanfaerhuan-dfs/dfs-vps-deploy' TAG='v0.1.1' ASSET='ARCHIVE' SHA256='SHA256' bash -c 'set -euo pipefail; umask 077; d=$(mktemp -d); trap '\''rm -rf -- "$d"'\'' EXIT; cd "$d"; [[ "$SHA256" =~ ^[0-9a-f]{64}$ ]]; curl -q --proto "=https" --proto-redir "=https" --connect-timeout 10 --max-time 120 --retry 2 -fsSL "https://github.com/$REPO/releases/download/$TAG/$ASSET" -o source.tar.gz; printf "%s  source.tar.gz\n" "$SHA256" | sha256sum -c -; tar -xzf source.tar.gz; bash dfs-vps-deploy/bootstrap.sh "$@"' dfs-vps-deploy
+REPO='lanfaerhuan-dfs/dfs-vps-deploy' TAG='v0.1.2' ASSET='ARCHIVE' SHA256='SHA256' bash -c 'set -euo pipefail; umask 077; d=$(mktemp -d); trap '\''rm -rf -- "$d"'\'' EXIT; cd "$d"; [[ "$SHA256" =~ ^[0-9a-f]{64}$ ]]; curl -q --proto "=https" --proto-redir "=https" --connect-timeout 10 --max-time 120 --retry 2 -fsSL "https://github.com/$REPO/releases/download/$TAG/$ASSET" -o source.tar.gz; printf "%s  source.tar.gz\n" "$SHA256" | sha256sum -c -; tar -xzf source.tar.gz; bash dfs-vps-deploy/bootstrap.sh "$@"' dfs-vps-deploy
 ```
 
 若已验证并上传源码归档到 VPS，则解包后在同目录执行 `bash dfs-vps-deploy/bootstrap.sh`。安装命令末尾可追加参数，例如 `--dry-run`。生产使用前请阅读[验证范围](docs/TEST.md)。
@@ -52,6 +52,14 @@ VLESS 链接含有节点连接凭据，请私下保存和导入。默认的 REAL
 
 重跑安装入口会打开维护菜单。服务和密钥保存在 VPS 上。下面的命令以 root 执行。
 
+要把已有节点更新到 v0.1.2，请在 VPS 的 root SSH 会话执行下面这行命令。
+
+```bash
+curl -fsSL -o dfs-0.1.2.sh https://github.com/lanfaerhuan-dfs/dfs-vps-deploy/releases/download/v0.1.2/install.sh && bash dfs-0.1.2.sh repair
+```
+
+出现“确认维护并重启服务”时输入 `y`。工具会更新维护命令，保存本机快照，并用原节点身份和订阅地址生成新版配置。重启 Xray 和 Caddy 时代理连接会短暂中断。看到“维护完成，服务及订阅检查通过”后，在客户端刷新原来的 DFS 订阅。
+
 | 命令 | 功能 |
 | --- | --- |
 | `bash bootstrap.sh --dry-run` | 只读检查 Debian、架构、cloud-init、监听端口、路由、SSH 和公网 IPv4。全新机使用默认端口检查。 |
@@ -74,7 +82,9 @@ VLESS 链接含有节点连接凭据，请私下保存和导入。默认的 REAL
 scp root@NEW_VPS_IP:/var/lib/dfs-vps-deploy/migration.dfsbackup .
 ```
 
-Mihomo 订阅保留附件的 Fake-IP、国内 DNS/直连、ACL4SSR 每日更新及服务分流。订阅中的节点地址使用 DuckDNS 域名。客户端默认关闭 LAN 访问，DNS 监听 `127.0.0.1:1053`，避免客户端意外向局域网提供代理或 DNS。客户端的 LAN 需求可在本地单独配置。
+Mihomo 通过自建节点从 GitHub 下载 27 份 ACL4SSR 规则，之后每天更新一次。规则模式下，`copilot.microsoft.com` 优先走 `AI平台`，`www.duckdns.org` 优先走 `节点选择`。这两条规则只匹配对应的完整域名。`ChinaIp` 和 `ChinaCompanyIp` 使用 `ipcidr` 加载 IPv4 网段。
+
+订阅沿用 Fake-IP 和国内直连规则。客户端使用独立 DNS 解析节点的 DuckDNS 域名。客户端默认关闭 LAN 访问，DNS 监听 `127.0.0.1:1053`。需要局域网共享时，可以在客户端单独配置。
 
 - [故障排查](docs/TROUBLESHOOTING.md)
 - [测试报告](docs/TEST.md)

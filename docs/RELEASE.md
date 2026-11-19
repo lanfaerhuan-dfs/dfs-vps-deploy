@@ -11,8 +11,8 @@ git diff --cached
 从核对过的 Git 提交创建版本标签，打包该提交的树。脚本支持标签或提交 SHA，生成的文件名包含提交指纹，输出 SHA-256。若从源码包开始，在本地初始化 Git、核对文件后提交，再运行这些命令。
 
 ```bash
-git tag -a v0.1.1 -m 'DFS VPS Deploy 0.1.1'
-scripts/package.sh v0.1.1 dist OWNER/REPO
+git tag -a v0.1.2 -m 'DFS VPS Deploy 0.1.2'
+scripts/package.sh v0.1.2 dist OWNER/REPO
 ```
 
 已有标签可直接用于打包。提供 `OWNER/REPO` 时，脚本也会生成一个 `install.sh`，内置该标签下的归档地址和 SHA-256。用专用输出目录打包不同版本，方便匹配同一版本的三个文件。
